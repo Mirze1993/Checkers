@@ -1,0 +1,24 @@
+﻿
+@model Checkers.DB.User
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1> @ViewBag.gozle</h1>
+
+
+<form method="post" asp-action="Login">
+    <input asp-for="Name" />
+    <button type="submit"> basla</button>
+</form>
+
+
+
+<a id="basla" style="visibility:hidden" asp-action="Board">oyuba basla</a>
+<script>
+    $(document).ready(function () {
+          
+
+    });
+</script>

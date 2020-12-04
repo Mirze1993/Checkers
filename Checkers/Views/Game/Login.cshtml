@@ -1,0 +1,168 @@
+﻿@model List<Checkers.DB.User>;
+@{
+    ViewData["Title"] = "Login";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    @if (Model != null)
+    {
+        for (int i = 0; i < Model.Count; i++)
+        {
+        <p id="@Model[i].Name" class="btn btn-primary">@Model[i].Name </p>
+        }
+    <h5 id="gonderildi"></h5>
+    }
+</div>
+
+
+<div class="card">
+    <div class="card-header">Oyun Devetleri</div>
+    <div id="gelenIstekler"  class="card-body">
+        
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Edilen devetler</div>
+    <div id="gedenIstekler" class="card-body">
+    </div>
+</div>
+
+
+<div class="card">
+    <div class="card-header">Oyunlar</div>
+    <div id="Oyunlar" class="card-body">
+    </div>
+</div>
+
+<script>
+    
+    function qebul (a) {        
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("QebulEt")",
+                data: {
+                    ad: a
+                },
+                dataType: "text",
+                success: function (msg) {                    
+                    $("#gonderildi").text(msg);
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            })
+    };
+
+    function reqib(r) {
+        console.log(r);
+        $.ajax({type: "POST",
+                url: "@Url.Action("Reqib")",
+                data: {  reqib: r  },
+                dataType: "text",
+                success: function (msg) { },
+                error: function (msg) { }
+        });
+    };
+
+
+    $(document).ready(function () {
+        var UserName = '@HttpContextAccessor.HttpContext.Session.GetString("ad")';
+        //istek qebulu
+        $("p").click(function () {
+             $.ajax({
+             type: "POST",
+             url: "@Url.Action("IstekGonder")",
+                 data: {
+                     alan: $(this).text(),
+                     gonderen: UserName
+                 },
+                 dataType: "text",
+                 success: function (msg) {
+                     console.log(msg);
+                     $("#gonderildi").text("gonderildi");
+                 },
+                 error: function (msg) {
+                     console.log(msg);
+                 }             
+            });
+        });
+
+        
+        var timer = setInterval(function () {
+            $("#Oyunlar").empty();
+            //istek yoxlamaq
+            $.ajax({
+                type: "Post",
+                url: "@Url.Action("IstekYoxla")",
+                data: {
+                    ad: UserName
+                },
+                dataType: "text",
+                success: function (msg) {
+                    console.log(msg);
+                    var obj = jQuery.parseJSON(msg);
+                    var gedenler = obj.Gedenler;
+                    var gelenler = obj.Gelenler
+                    var test = "";
+                   
+                    $("#gelenIstekler").empty();
+                    $(gelenler).each(function (i, value) {
+                        // oyunlar
+                        if (value.State) {
+                            var $e = $("<a>",
+                            {                                
+                                text: value.User1.Name,
+                                href:"@Url.Action("Board")",
+                                class: "btn btn-primary"
+                                });
+                            $e.attr('onclick', "reqib('" + value.User1.Name + "')");
+                            $("#Oyunlar").append($e);
+                            return true;
+                        }
+                        //gelen istekler
+                        var $e = $("<h5>",
+                            {                                
+                                class: "btn btn-primary",                                
+                                text: value.User1.Name                                
+                            });
+                        $e.attr('onclick', "qebul('"+value.User1.Name+"')");
+                        $("#gelenIstekler").append($e);
+                    });
+
+                    $("#gedenIstekler").empty();
+                    $(gedenler).each(function (i, value) {
+                        //oyunlar
+                        if (value.State) {
+                            var $e = $("<a>",
+                                {
+                                    href:"@Url.Action("Board")",
+                                    text: value.User2.Name,
+                                    class: "btn btn-primary",
+                                });
+                            $e.attr('onclick', "reqib('" + value.User2.Name + "')");
+                            $("#Oyunlar").append($e);
+                            return true;
+                        }
+                        //geden istekler
+                        var $e = $("<a>",
+                            {
+                                text: value.User2.Name,                                
+                                href: '#',
+                                class: "btn btn-link",
+                            });                        
+                        
+                        $("#gedenIstekler").append($e);
+                    });
+
+                  
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            });  
+        }, 5000);
+    });
+
+
+</script>

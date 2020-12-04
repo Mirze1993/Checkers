@@ -1,0 +1,255 @@
+﻿
+@{
+    ViewData["Title"] = "Board";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="item">
+
+</div>
+<style>
+    .VurubGedecekYer {
+        position: absolute;
+        background-size: 100%;
+        background-color: darkgoldenrod;
+        width: 12.5%;
+        height: 12.5%;
+        margin: 0;
+    }
+</style>
+<script>
+    var oyuncu = "@HttpContextAccessor.HttpContext.Session.GetString("ad")";
+    var reqib = "@HttpContextAccessor.HttpContext.Session.GetString("reqib")";
+
+    var AgdasOyncusu;    
+
+    $(document).ready(function () {
+        //daslar
+        (function ($) {
+            $.fn.Das = function (x, y,classname ) {
+                var $e = $("<div>", {id: x + "" + y, class: classname,
+                    style: "left:" + (x * 12.5) + "%; top:" + (y * 12.5) + "%"                    
+                });             
+                this.append($e);                
+            }
+        })(jQuery);
+
+        //oyun baslladi ve daslar duzuldu
+        $.ajax({
+                type: "POST",
+                url : "@Url.Action("OyunBaslasin")",
+                data: {
+                    oyuncu: oyuncu,
+                    reqib: reqib
+                },
+                dataType: "text",
+                success: function (msg) {
+                console.log(msg);
+                    var obj = jQuery.parseJSON(msg);
+                    var AgDaslar = obj.WhiteCoordinate;
+                    var QaraKordinat = obj.BlackCoordinate;
+                    AgdasOyncusu = obj.Gamer1;
+                    $(AgDaslar).each(function (i, value) {
+                        var x = value.X;
+                        var y = value.Y;                        
+                        $(".item").Das(x, y, 'AgDas');
+                    });
+                    $(QaraKordinat).each(function (i, value) {
+                        var x = value.X;
+                        var y = value.Y;
+                        $(".item").Das(x, y,'QaraDas');
+                    });
+
+                    $(".AgDas").click(function () {
+                        clickk($(this).attr("id"));
+                    });
+                    $(".QaraDas").click(function () {
+                        clickk($(this).attr("id"));
+                    });
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            }
+        );
+        
+        var timer = setInterval(OyunVarmi, 1000);        
+    });
+    
+    function OyunVarmi() {
+        $.ajax(
+                    {
+                        type: "POST",
+                        url: "@Url.Action("YeniGedisVarmi")",
+                        data: {
+                            oyuncu: oyuncu,
+                            reqib: reqib
+                        },
+                        dataType: "text",
+                        success: function (msg) {                             
+                            var obj = jQuery.parseJSON(msg); 
+                            novbe = obj.Queue;
+
+                            
+                            var x1 = (obj.Move.OldX + obj.Move.NewX) / 2;
+                            var y1 = (obj.Move.OldY + obj.Move.NewY) / 2;
+                            var vurulandas = x1 + "" + y1;
+                            $(document.getElementById(vurulandas)).remove();
+                            
+                            var DasId = obj.Move.OldX + "" + obj.Move.OldY;
+                            $(document.getElementById(DasId)).animate({ left: obj.Move.NewX * 12.5 + "%", top: obj.Move.NewY * 12.5 + "%" });
+                            $(document.getElementById(DasId)).attr("id", obj.Move.NewX + "" + obj.Move.NewY);                           
+                        },
+                        error: function (msg) {
+                            console.log(msg);
+                        }
+                    }
+                );
+    }
+
+    //dasa click etmek 
+    var novbe;
+    var leftKor;
+    var topKor;
+    
+    function clickk(e) {        
+        if (oyuncu === novbe) {
+            console.log();
+            var secilenDas = document.getElementById(e);
+            if (oyuncu === AgdasOyncusu && $(secilenDas).hasClass("AgDas")) {
+                console.log("ag click edildi");
+                ClickHesabla(secilenDas);
+            }
+            else if (reqib === AgdasOyncusu && $(secilenDas).hasClass("QaraDas")) {
+                console.log("qara click edildi");
+                ClickHesabla(secilenDas);
+            }
+        }
+    }
+
+    // click edende hesabla
+    function ClickHesabla(e) {
+        var top = $(e).position().top;
+        var left = $(e).position().left;
+        leftKor = Math.round((left / $(".item").width()) * 8);
+        topKor = Math.round((top / $(".item").height()) * 8);
+        $(".GedecekYer").remove();
+        $(".VurubGedecekYer").remove();
+        gedecekYer(leftKor, topKor);
+    }
+
+    //gede bileceyi yer server melumat
+    function gedecekYer(x, y) {
+        $.ajax(
+            {
+                type: "POST",
+                url : "@Url.Action("GedeceyiYer")",
+                data: {
+                    oyuncu: oyuncu,
+                    reqib: reqib,
+                    korX: x,
+                    korY:y
+                },
+                dataType: "text",
+                success: function (msg) {
+                    console.log(msg);
+                    var obj = jQuery.parseJSON(msg);
+                    if (obj != null) {
+                        $(obj).each(function (i, value) {
+                            var a = Math.abs(x - value.X); 
+                            var $e = $("<div>", {
+                                id: value.X + "/" + value.Y, 
+                                style: "left:" + (value.X * 12.5) + "%; top:" + (value.Y * 12.5) + "%",
+                                onclick: "Hereket('" + value.X + "/" + value.Y + "'," + a + ")"
+                            });                           
+                            if (a == 2) {
+                                $e.addClass("VurubGedecekYer");                              
+                            } else {
+                                $e.addClass("GedecekYer");                               
+                            }                           
+                            $(".item").append($e);
+                        });
+                    }                                     
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            }
+        );       
+    }
+
+    //hereket etmek
+    function Hereket(e,a) {        
+        var top1 = $(document.getElementById(e)).position().top;
+        var left1 = $(document.getElementById(e)).position().left;
+        var leftKor1 = Math.round((left1 / $(".item").width()) * 8);
+        var topKor1 = Math.round((top1 / $(".item").height()) * 8);
+        if (a == 2) {
+            $(".VurubGedecekYer").remove();
+            VurmaqServerde(leftKor1, topKor1);
+        } else {
+            $(".GedecekYer").remove();
+            HereketServerde(leftKor1, topKor1);
+        }       
+    }
+
+    //hereket serverede
+    function HereketServerde(x, y) {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("HeretEdir")",
+            data: {
+                oyuncu: oyuncu, reqib: reqib,
+                kohKorX: leftKor, kohKorY: topKor, yeniKorX: x, yeniKorY: y
+            },
+            dataType: "text",
+            success: function (msg) {                               
+                var obj = jQuery.parseJSON(msg);
+                if (obj != null) {                   
+                    var DasId = obj.OldX + "" + obj.OldY;
+                    $(document.getElementById(DasId)).animate({ left: obj.NewX * 12.5 + "%", top: obj.NewY * 12.5 + "%" });
+                    $(document.getElementById(DasId)).attr("id", obj.NewX + "" + obj.NewY);
+                    
+                }        
+            },
+            error: function (msg) { console.log(msg);  }
+         });
+    }
+
+    //Vurmaq serverede
+    function VurmaqServerde(x, y) {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Vurmaq")",
+            data: {
+                oyuncu: oyuncu, reqib: reqib,
+                kohKorX: leftKor, kohKorY: topKor, yeniKorX: x, yeniKorY: y
+            },
+            dataType: "text",
+            success: function (msg) {                               
+                var obj = jQuery.parseJSON(msg);
+                if (obj != null) {                   
+                    var DasId = obj.OldX + "" + obj.OldY;
+                    var x1 = (obj.OldX + x) / 2;
+                    var y1 = (obj.OldY + y) / 2;
+                    var vurulandas = x1 + "" + y1;
+                    $(document.getElementById(vurulandas)).remove();
+                    $(document.getElementById(DasId)).animate({ left: obj.NewX * 12.5 + "%", top: obj.NewY * 12.5 + "%" });
+                    $(document.getElementById(DasId)).attr("id", obj.NewX + "" + obj.NewY);
+                    
+                }        
+            },
+            error: function (msg) { console.log(msg);  }
+         });
+    }
+
+
+</script>
+
+
+
+
+
+
+
+
